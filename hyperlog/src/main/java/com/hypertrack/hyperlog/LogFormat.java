@@ -32,6 +32,7 @@ import com.google.gson.Gson;
 import com.hypertrack.hyperlog.utils.HLDateTimeUtility;
 
 import java.io.Serializable;
+import java.util.UUID;
 
 
 /**
@@ -51,7 +52,7 @@ public class LogFormat implements Serializable {
     public LogFormat(Context context) {
         Context mContext = context.getApplicationContext();
         String uuid = Settings.Secure.getString(mContext.getContentResolver(), Settings.Secure.ANDROID_ID);
-        deviceUUID = uuid == null ? "UnknownUUID": uuid;
+        deviceUUID = uuid != null ? uuid : "Random"+UUID.randomUUID().toString();
     }
 
     /**
