@@ -728,7 +728,6 @@ public class HyperLog {
                 public void onResponse(String response) {
                     temp[0]--;
                     mDeviceLogList.clearDeviceLogs(deviceLogs);
-                    HyperLog.i("HYPERLOG", "Log has been pushed");
 
                     if (callback != null && temp[0] == 0) {
                         if (isAllLogsPushed[0]) {
@@ -746,7 +745,6 @@ public class HyperLog {
                     isAllLogsPushed[0] = false;
                     temp[0]--;
                     error.printStackTrace();
-                    HyperLog.exception(TAG, "Error has occurred while pushing logs: ", error);
 
                     if (temp[0] == 0) {
                         if (callback != null) {
@@ -760,7 +758,7 @@ public class HyperLog {
                     Map<String, String> params = new HashMap<>();
                     int index = 0;
                     for (DeviceLogModel deviceLog : deviceLogs) {
-                        params.put("log["+(index++)+"]", deviceLog.getDeviceLog());
+                        params.put("logs["+(index++)+"]", deviceLog.getDeviceLog());
                     }
                     return params;
                 }
