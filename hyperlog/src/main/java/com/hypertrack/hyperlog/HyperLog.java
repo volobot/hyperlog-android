@@ -29,8 +29,10 @@ import android.support.annotation.NonNull;
 import android.text.TextUtils;
 import android.util.Log;
 
+import com.android.volley.Request;
 import com.android.volley.Response;
 import com.android.volley.VolleyError;
+import com.android.volley.toolbox.StringRequest;
 import com.hypertrack.hyperlog.error.HLErrorResponse;
 import com.hypertrack.hyperlog.utils.HLDateTimeUtility;
 import com.hypertrack.hyperlog.utils.Utils;
@@ -40,6 +42,7 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -691,6 +694,78 @@ public class HyperLog {
                     });
 
             VolleyUtils.addToRequestQueue(mContext, hlHTTPMultiPartPostRequest, TAG);
+            logsBatchCount--;
+        }
+    }
+
+    public static void pushLogsV2(Context mContext, final HLCallback callback) {
+
+        if (!isInitialize())
+            return;
+
+        if (TextUtils.isEmpty(URL)) {
+            HyperLog.e("HYPERLOG", "API endpoint URL is missing. Set URL using " +
+                    "HyperLog.setURL method");
+            return;
+        }
+
+        VolleyUtils.cancelPendingRequests(mContext, TAG);
+
+        if (!hasPendingDeviceLogs())
+            return;
+
+        //Check how many batches of device logs are available to push
+        int logsBatchCount = getDeviceLogBatchCount();
+
+        final int[] temp = {logsBatchCount};
+        final boolean[] isAllLogsPushed = {true};
+
+        while (logsBatchCount != 0) {
+
+            final List<DeviceLogModel> deviceLogs = getDeviceLogs(false, logsBatchCount);
+            StringRequest request = new StringRequest(Request.Method.POST, URL, new Response.Listener<String>() {
+                @Override
+                public void onResponse(String response) {
+                    temp[0]--;
+                    mDeviceLogList.clearDeviceLogs(deviceLogs);
+                    HyperLog.i("HYPERLOG", "Log has been pushed");
+
+                    if (callback != null && temp[0] == 0) {
+                        if (isAllLogsPushed[0]) {
+                            callback.onSuccess(response);
+                        } else {
+                            HLErrorResponse HLErrorResponse = new HLErrorResponse("All logs hasn't been pushed");
+                            callback.onError(HLErrorResponse);
+                        }
+                    }
+                }
+            }, new Response.ErrorListener() {
+                @Override
+                public void onErrorResponse(VolleyError error) {
+                    HLErrorResponse HLErrorResponse = new HLErrorResponse(error);
+                    isAllLogsPushed[0] = false;
+                    temp[0]--;
+                    error.printStackTrace();
+                    HyperLog.exception(TAG, "Error has occurred while pushing logs: ", error);
+
+                    if (temp[0] == 0) {
+                        if (callback != null) {
+                            callback.onError(HLErrorResponse);
+                        }
+                    }
+                }
+            }){
+                @Override
+                protected Map<String, String> getParams() {
+                    Map<String, String> params = new HashMap<>();
+                    int index = 0;
+                    for (DeviceLogModel deviceLog : deviceLogs) {
+                        params.put("log["+(index++)+"]", deviceLog.getDeviceLog());
+                    }
+                    return params;
+                }
+            };
+            VolleyUtils.addToRequestQueue(mContext, request, TAG);
             logsBatchCount--;
         }
     }
